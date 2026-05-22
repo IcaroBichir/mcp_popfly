@@ -11,7 +11,15 @@ def cli() -> None:
 @cli.command()
 def auth() -> None:
     """Store Popfly credentials locally (~/.config/popfly-mcp/tokens.json)."""
+    import json
     from .auth import TOKENS_FILE, save_tokens
+
+    existing = {}
+    if TOKENS_FILE.exists():
+        try:
+            existing = json.loads(TOKENS_FILE.read_text())
+        except Exception:
+            pass
 
     click.echo("Open app.popfly.com in Chrome, then open DevTools → Network → Fetch/XHR.")
     click.echo("Click any 'query?creatorId=...' request.\n")
@@ -22,9 +30,15 @@ def auth() -> None:
     refresh_token = click.prompt(
         "Refresh token (value of the 'refreshToken' cookie from a /auth/refresh request)"
     ).strip()
-    creator_id = click.prompt(
-        "Creator ID (numeric value from the creatorId URL parameter)"
-    ).strip()
+
+    existing_id = existing.get("creator_id", "")
+    if existing_id:
+        creator_id = existing_id
+        click.echo(f"Creator ID: {creator_id} (kept from existing config)")
+    else:
+        creator_id = click.prompt(
+            "Creator ID (numeric value from the creatorId URL parameter)"
+        ).strip()
 
     save_tokens(
         {
