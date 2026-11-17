@@ -50,12 +50,10 @@ def refresh_tokens(tokens: dict) -> dict:
         raise RuntimeError("Refresh response missing accessToken.")
 
     # Popfly rotates the refresh token on each use — capture it from Set-Cookie.
-    new_refresh = refresh_token
-    for part in resp.headers.get("set-cookie", "").split(";"):
-        part = part.strip()
-        if part.startswith("refreshToken="):
-            new_refresh = part[len("refreshToken="):]
-            break
+    # Parse via httpx's cookie jar: hand-splitting the raw header missed the token
+    # when Popfly sent more than one Set-Cookie, leaving a dead (already-rotated)
+    # refresh token on disk.
+    new_refresh = resp.cookies.get("refreshToken") or refresh_token
 
     updated = {**tokens, "access_token": new_access, "refresh_token": new_refresh}
     save_tokens(updated)
